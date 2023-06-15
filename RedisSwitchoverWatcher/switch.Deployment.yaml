@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-switch-restart
+  labels:
+    app: redis-switch-restart
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-switch-restart
+  template:
+    metadata:
+      labels:
+        app: redis-switch-restart
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      containers:
+        - name: redis-switch-restart
+          image: 192.168.10.54:8889/middleware/redis-switch:restart-deployment-20230614
+          resources:
+            limits:
+              cpu: 20m
+              memory: 50Mi
+            requests:
+              cpu: 10m
+              memory: 20Mi
+          env:
+            - name: NODE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: KUBECONFIG
+              value: "/root/config"
+            - name: NAMESPACES
+              value: "entuc,entcmd"
+            - name: K8S_API_SERVER
+              value: "https://$(NODE_IP):6444"
+            - name: INTERVAL_TIME
+              value: "10"
+            - name: SENTINEL_ADDRS
+              value: "192.168.10.51:26379,192.168.10.52:26379,192.168.10.53:26379"
+          volumeMounts:
+            - mountPath: /root/config
+              name: kubeconfig
+            - mountPath: /tmp
+              name: switch-status-pv
+      volumes:
+        - hostPath:
+            path: /etc/kubernetes/admin.conf
+            type: ""
+          name: kubeconfig
